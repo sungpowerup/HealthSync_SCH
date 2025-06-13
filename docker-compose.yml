@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: healthsync-postgres
+    environment:
+      POSTGRES_DB: healthsync
+      POSTGRES_USER: healthsync
+      POSTGRES_PASSWORD: healthsync123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - healthsync-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: healthsync-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - healthsync-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: healthsync-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - USER_SERVICE_URL=http://user-service:8081
+      - HEALTH_SERVICE_URL=http://health-service:8082
+      - INTELLIGENCE_SERVICE_URL=http://intelligence-service:8083
+      - GOAL_SERVICE_URL=http://goal-service:8084
+      - MOTIVATOR_SERVICE_URL=http://motivator-service:8085
+    depends_on:
+      - redis
+    networks:
+      - healthsync-network
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: healthsync-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/healthsync_user
+      - DB_USERNAME=healthsync
+      - DB_PASSWORD=healthsync123
+      - REDIS_HOST=redis
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - healthsync-network
+
+  # Health Service
+  health-service:
+    build:
+      context: .
+      dockerfile: health-service/Dockerfile
+    container_name: healthsync-health-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/healthsync_health
+      - DB_USERNAME=healthsync
+      - DB_PASSWORD=healthsync123
+      - REDIS_HOST=redis
+      - USER_SERVICE_URL=http://user-service:8081
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - healthsync-network
+
+  # Intelligence Service
+  intelligence-service:
+    build:
+      context: .
+      dockerfile: intelligence-service/Dockerfile
+    container_name: healthsync-intelligence-service
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/healthsync_intelligence
+      - DB_USERNAME=healthsync
+      - DB_PASSWORD=healthsync123
+      - REDIS_HOST=redis
+      - USER_SERVICE_URL=http://user-service:8081
+      - HEALTH_SERVICE_URL=http://health-service:8082
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - healthsync-network
+
+  # Goal Service
+  goal-service:
+    build:
+      context: .
+      dockerfile: goal-service/Dockerfile
+    container_name: healthsync-goal-service
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/healthsync_goal
+      - DB_USERNAME=healthsync
+      - DB_PASSWORD=healthsync123
+      - REDIS_HOST=redis
+      - USER_SERVICE_URL=http://user-service:8081
+      - INTELLIGENCE_SERVICE_URL=http://intelligence-service:8083
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - healthsync-network
+
+  # Motivator Service
+  motivator-service:
+    build:
+      context: .
+      dockerfile: motivator-service/Dockerfile
+    container_name: healthsync-motivator-service
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/healthsync_motivator
+      - DB_USERNAME=healthsync
+      - DB_PASSWORD=healthsync123
+      - REDIS_HOST=redis
+      - GOAL_SERVICE_URL=http://goal-service:8084
+      - INTELLIGENCE_SERVICE_URL=http://intelligence-service:8083
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - healthsync-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  healthsync-network:
+    driver: bridge

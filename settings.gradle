@@ -1,0 +1,9 @@
+rootProject.name = 'healthsync-backend'
+
+include 'common'
+include 'user-service'
+include 'health-service'
+include 'intelligence-service'
+include 'goal-service'
+include 'motivator-service'
+include 'api-gateway'

@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      routes:
+        # User Service 라우팅
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**, /api/users/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            
+        # Health Service 라우팅
+        - id: health-service
+          uri: ${HEALTH_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/health/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            
+        # Intelligence Service 라우팅
+        - id: intelligence-service
+          uri: ${INTELLIGENCE_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/intelligence/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            
+        # Goal Service 라우팅
+        - id: goal-service
+          uri: ${GOAL_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/goals/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            
+        # Motivator Service 라우팅
+        - id: motivator-service
+          uri: ${MOTIVATOR_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/motivator/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+      
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: 
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# 로깅 설정
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    reactor.netty: ${NETTY_LOG_LEVEL:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,0 +1,5 @@
+// user-service/build.gradle
+dependencies {
+    implementation project(':common')
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+}
